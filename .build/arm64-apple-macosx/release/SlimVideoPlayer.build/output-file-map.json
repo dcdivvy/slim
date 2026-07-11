@@ -1,0 +1,49 @@
+{
+  "": {
+    "dependencies": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/SlimVideoPlayer.d",
+    "object": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/SlimVideoPlayer.o",
+    "swift-dependencies": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/primary.swiftdeps"
+  },
+  "/Users/david/git/slim/Sources/SlimVideoPlayer/ContentView.swift": {
+    "object": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/ContentView.swift.o",
+    "swiftmodule": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/ContentView~partial.swiftmodule",
+    "swift-dependencies": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/ContentView.swiftdeps",
+    "diagnostics": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/ContentView.dia"
+  },
+  "/Users/david/git/slim/Sources/SlimVideoPlayer/FullScreenController.swift": {
+    "object": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/FullScreenController.swift.o",
+    "swiftmodule": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/FullScreenController~partial.swiftmodule",
+    "swift-dependencies": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/FullScreenController.swiftdeps",
+    "diagnostics": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/FullScreenController.dia"
+  },
+  "/Users/david/git/slim/Sources/SlimVideoPlayer/PlaybackModel.swift": {
+    "object": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/PlaybackModel.swift.o",
+    "swiftmodule": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/PlaybackModel~partial.swiftmodule",
+    "swift-dependencies": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/PlaybackModel.swiftdeps",
+    "diagnostics": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/PlaybackModel.dia"
+  },
+  "/Users/david/git/slim/Sources/SlimVideoPlayer/RangeTimeline.swift": {
+    "object": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/RangeTimeline.swift.o",
+    "swiftmodule": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/RangeTimeline~partial.swiftmodule",
+    "swift-dependencies": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/RangeTimeline.swiftdeps",
+    "diagnostics": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/RangeTimeline.dia"
+  },
+  "/Users/david/git/slim/Sources/SlimVideoPlayer/ReverseFrameDecoder.swift": {
+    "object": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/ReverseFrameDecoder.swift.o",
+    "swiftmodule": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/ReverseFrameDecoder~partial.swiftmodule",
+    "swift-dependencies": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/ReverseFrameDecoder.swiftdeps",
+    "diagnostics": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/ReverseFrameDecoder.dia"
+  },
+  "/Users/david/git/slim/Sources/SlimVideoPlayer/SlimVideoPlayerApp.swift": {
+    "object": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/SlimVideoPlayerApp.swift.o",
+    "swiftmodule": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/SlimVideoPlayerApp~partial.swiftmodule",
+    "swift-dependencies": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/SlimVideoPlayerApp.swiftdeps",
+    "diagnostics": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/SlimVideoPlayerApp.dia"
+  },
+  "/Users/david/git/slim/Sources/SlimVideoPlayer/VideoSurface.swift": {
+    "object": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/VideoSurface.swift.o",
+    "swiftmodule": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/VideoSurface~partial.swiftmodule",
+    "swift-dependencies": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/VideoSurface.swiftdeps",
+    "diagnostics": "/Users/david/git/slim/.build/arm64-apple-macosx/release/SlimVideoPlayer.build/VideoSurface.dia"
+  }
+}
