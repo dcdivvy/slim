@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="SlimVideoPlayer/Assets.xcassets/AppIcon.appiconset/AppIcon-256.png" width="128" height="128" alt="Slim Video Player app icon">
+</p>
+
 # Slim Video Player
 
 Slim Video Player is a focused, native macOS app for inspecting MP4 video files.
