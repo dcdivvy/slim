@@ -147,8 +147,9 @@ struct ContentView: View {
                     model.cycleRepeatMode()
                 } label: {
                     Image(systemName: repeatButtonIcon)
+                        .foregroundStyle(.black)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
                 .tint(repeatButtonColor)
                 .help("Repeat Mode: \(model.repeatMode.title)")
                 .accessibilityLabel("Repeat Mode: \(model.repeatMode.title)")
@@ -235,7 +236,9 @@ struct ContentView: View {
 
     private var repeatButtonIcon: String {
         switch model.repeatMode {
-        case .off, .fromStart:
+        case .off:
+            "octagon.fill"
+        case .fromStart:
             "repeat"
         case .bounce:
             "arrow.left.and.right"
@@ -245,9 +248,9 @@ struct ContentView: View {
     private var repeatButtonColor: Color {
         switch model.repeatMode {
         case .off:
-            .secondary
+            .gray
         case .fromStart:
-            .accentColor
+            .green
         case .bounce:
             .orange
         }
