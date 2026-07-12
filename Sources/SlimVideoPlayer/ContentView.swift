@@ -9,7 +9,7 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             videoArea
-            if !model.isFullScreen {
+            if model.hasVideo && !model.isFullScreen {
                 controls
             }
         }
