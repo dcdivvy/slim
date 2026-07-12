@@ -205,7 +205,7 @@ struct ContentView: View {
             HStack(spacing: 18) {
                 metric("Elapsed", model.formatTime(model.currentTime))
                 metric("Frame", "\(model.currentFrame)")
-                metric("Remaining", "−\(model.formatTime(model.remainingTime))")
+                metric("Remaining", model.formatTime(model.remainingTime))
                 metric("Duration", model.formatTime(model.duration))
 
                 Spacer()
