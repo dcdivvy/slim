@@ -8,6 +8,8 @@ Slim Video Player is a focused, native macOS app for inspecting MP4 video files.
 It uses SwiftUI and AVFoundation, keeps playback controls out of the video area,
 and makes it easy to review an exact range one frame at a time.
 
+![Slim Video Player](slim-video-player.png)
+
 ## Features
 
 ### Opening videos
