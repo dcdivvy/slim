@@ -54,18 +54,33 @@ rewrites the original video.
 - macOS 14 or later
 - Xcode 16 or a compatible Swift 6 toolchain
 
-## Run from source
+## Build the macOS app
 
-Open `Package.swift` in Xcode and run the `SlimVideoPlayer` scheme, or use:
+Open `SlimVideoPlayer.xcodeproj` in Xcode, select the `SlimVideoPlayer` scheme,
+and press `Command-R`. This builds and launches a conventional macOS
+application with its own Dock and Finder icon.
+
+To create a release build from the command line:
+
+```sh
+xcodebuild \
+  -project SlimVideoPlayer.xcodeproj \
+  -scheme SlimVideoPlayer \
+  -configuration Release \
+  -derivedDataPath .build/xcode \
+  build
+```
+
+The application is placed at:
+
+```text
+.build/xcode/Build/Products/Release/SlimVideoPlayer.app
+```
+
+You can also use **Product > Archive** in Xcode to sign and distribute the app.
+
+The Swift package remains available for development from Terminal:
 
 ```sh
 swift run SlimVideoPlayer
 ```
-
-To create a release build:
-
-```sh
-swift build -c release
-```
-
-The resulting executable is placed under `.build/release/`.
