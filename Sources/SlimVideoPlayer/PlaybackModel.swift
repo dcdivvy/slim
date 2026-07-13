@@ -33,6 +33,7 @@ final class PlaybackModel {
     var rangeEnd = 0.0
     var fileName: String?
     var errorMessage: String?
+    private(set) var isVideoReady = false
     private(set) var reverseFrame: ReverseFrame?
     private(set) var showsReverseFrame = false
 
@@ -66,7 +67,7 @@ final class PlaybackModel {
     }
 
     var hasVideo: Bool {
-        player.currentItem != nil && duration > 0
+        isVideoReady
     }
 
     var canStepFrames: Bool {
@@ -101,6 +102,7 @@ final class PlaybackModel {
         player.cancelPendingPrerolls()
         player.pause()
         player.replaceCurrentItem(with: nil)
+        isVideoReady = false
         isPlaying = false
         errorMessage = nil
         repeatMode = .off
@@ -144,12 +146,14 @@ final class PlaybackModel {
 
                 let item = AVPlayerItem(asset: asset)
                 player.replaceCurrentItem(with: item)
+                isVideoReady = true
                 updatePlaybackBoundaryTimes()
                 observeEnd(of: item)
                 startPlayback()
             } catch {
                 guard !Task.isCancelled else { return }
                 player.replaceCurrentItem(with: nil)
+                isVideoReady = false
                 duration = 0
                 rangeEnd = 0
                 errorMessage = "The video could not be opened: \(error.localizedDescription)"
