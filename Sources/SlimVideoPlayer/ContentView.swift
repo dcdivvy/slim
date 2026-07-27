@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct ContentView: View {
     @Bindable var model: PlaybackModel
@@ -8,8 +7,8 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            videoArea
-            if model.hasVideo && !model.isFullScreen {
+            mediaArea
+            if model.hasMedia && !model.isFullScreen {
                 controls
             }
         }
@@ -30,7 +29,7 @@ struct ContentView: View {
         }
         .fileImporter(
             isPresented: $model.isFileImporterPresented,
-            allowedContentTypes: [.mpeg4Movie],
+            allowedContentTypes: MediaFileSupport.allowedContentTypes,
             allowsMultipleSelection: false
         ) { result in
             switch result {
@@ -44,9 +43,10 @@ struct ContentView: View {
         }
         .dropDestination(for: URL.self) { urls, _ in
             guard let url = urls.first(where: {
-                $0.isFileURL && $0.pathExtension.lowercased() == "mp4"
+                $0.isFileURL && MediaFileSupport.isSupported($0)
             }) else {
-                model.errorMessage = "Drop an MP4 video file to open it."
+                model.errorMessage =
+                    "Drop an MP4, JPG, or PNG media file to open it."
                 return false
             }
             model.open(url: url)
@@ -55,7 +55,7 @@ struct ContentView: View {
             isDropTargeted = isTargeted
         }
         .alert(
-            "Unable to Open Video",
+            "Unable to Open Media",
             isPresented: Binding(
                 get: { model.errorMessage != nil },
                 set: { if !$0 { model.errorMessage = nil } }
@@ -69,28 +69,30 @@ struct ContentView: View {
         }
     }
 
-    private var videoArea: some View {
+    private var mediaArea: some View {
         ZStack {
             Color.black
 
-            if model.hasVideo {
+            if model.isVideo {
                 VideoSurface(
                     player: model.player,
                     reverseFrame: model.reverseFrame,
                     showsReverseFrame: model.showsReverseFrame,
                     rotationQuarterTurns: model.rotationQuarterTurns
                 )
+            } else if model.isImage, model.displayedImage != nil {
+                ImageSurface(model: model)
             } else {
                 VStack(spacing: 14) {
-                    Image(systemName: "play.rectangle")
+                    Image(systemName: "photo.on.rectangle")
                         .font(.system(size: 54, weight: .thin))
                         .foregroundStyle(.secondary)
 
-                    Text("Drop an MP4 video here")
+                    Text("Drop media here")
                         .font(.title3)
                         .foregroundStyle(.secondary)
 
-                    Button("Open Video…") {
+                    Button("Open Media…") {
                         model.isFileImporterPresented = true
                     }
                     .buttonStyle(.borderedProminent)
@@ -110,80 +112,80 @@ struct ContentView: View {
 
     private var controls: some View {
         VStack(spacing: 10) {
-            RangeTimeline(model: model)
-                .disabled(!model.hasVideo)
+            if model.isVideo {
+                RangeTimeline(model: model)
+            }
 
             HStack(spacing: 14) {
-                Button {
-                    model.stepFrame(direction: -1)
-                } label: {
-                    Image(systemName: "backward.frame.fill")
-                }
-                .help("Previous Frame (Left Arrow)")
-                .disabled(!model.canStepFrames)
+                if model.isVideo {
+                    Button {
+                        model.stepFrame(direction: -1)
+                    } label: {
+                        Image(systemName: "backward.frame.fill")
+                    }
+                    .help("Previous Frame (Left Arrow)")
+                    .disabled(!model.canStepFrames)
 
-                Button {
-                    model.togglePlayback()
-                } label: {
-                    Image(systemName: model.isPlaying ? "pause.fill" : "play.fill")
-                        .frame(width: 18)
-                }
-                .buttonStyle(.borderedProminent)
-                .help(model.isPlaying ? "Pause (Space)" : "Play (Space)")
-                .disabled(!model.hasVideo)
+                    Button {
+                        model.togglePlayback()
+                    } label: {
+                        Image(systemName: model.isPlaying ? "pause.fill" : "play.fill")
+                            .frame(width: 18)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .help(model.isPlaying ? "Pause (Space)" : "Play (Space)")
 
-                Button {
-                    model.stepFrame(direction: 1)
-                } label: {
-                    Image(systemName: "forward.frame.fill")
-                }
-                .help("Next Frame (Right Arrow)")
-                .disabled(!model.canStepFrames)
+                    Button {
+                        model.stepFrame(direction: 1)
+                    } label: {
+                        Image(systemName: "forward.frame.fill")
+                    }
+                    .help("Next Frame (Right Arrow)")
+                    .disabled(!model.canStepFrames)
 
-                Divider()
-                    .frame(height: 20)
+                    Divider()
+                        .frame(height: 20)
 
-                Button {
-                    model.cycleRepeatMode()
-                } label: {
-                    Image(systemName: repeatButtonIcon)
-                        .foregroundStyle(.black)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(repeatButtonColor)
-                .help("Repeat Mode: \(model.repeatMode.title)")
-                .accessibilityLabel("Repeat Mode: \(model.repeatMode.title)")
-                .disabled(!model.hasVideo)
+                    Button {
+                        model.cycleRepeatMode()
+                    } label: {
+                        Image(systemName: repeatButtonIcon)
+                            .foregroundStyle(.black)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(repeatButtonColor)
+                    .help("Repeat Mode: \(model.repeatMode.title)")
+                    .accessibilityLabel("Repeat Mode: \(model.repeatMode.title)")
 
-                Button("Set Start") {
-                    model.setRangeStartToCurrentTime()
-                }
-                .help("Set Range Start to Current Position")
-                .disabled(!model.canSetRangeStart)
+                    Button("Set Start") {
+                        model.setRangeStartToCurrentTime()
+                    }
+                    .help("Set Range Start to Current Position")
+                    .disabled(!model.canSetRangeStart)
 
-                Button("Set End") {
-                    model.setRangeEndToCurrentTime()
+                    Button("Set End") {
+                        model.setRangeEndToCurrentTime()
+                    }
+                    .help("Set Range End to Current Position")
+                    .disabled(!model.canSetRangeEnd)
                 }
-                .help("Set Range End to Current Position")
-                .disabled(!model.canSetRangeEnd)
 
                 Button {
                     model.rotateCounterclockwise()
                 } label: {
                     Image(systemName: "rotate.left")
                 }
-                .help("Rotate 90° Counterclockwise")
+                .help("Rotate 90° Counterclockwise (R)")
                 .accessibilityLabel("Rotate 90 Degrees Counterclockwise")
-                .disabled(!model.hasVideo)
 
                 Button {
                     FullScreenController.shared.toggle()
                 } label: {
                     Image(systemName: "arrow.up.left.and.arrow.down.right")
                 }
-                .help("Full Screen (⌃⌘F)")
+                .help("Full Screen (F)")
                 .accessibilityLabel("Full Screen")
-                .disabled(!model.hasVideo)
+                .disabled(!model.hasMedia)
 
                 Spacer()
 
@@ -199,23 +201,25 @@ struct ContentView: View {
                 } label: {
                     Image(systemName: "folder")
                 }
-                .help("Open Video (⌘O)")
+                .help("Open Media (⌘O)")
             }
 
-            HStack(spacing: 18) {
-                metric("Elapsed", model.formatTime(model.currentTime))
-                metric("Frame", "\(model.currentFrame)")
-                metric("Remaining", model.formatTime(model.remainingTime))
-                metric("Duration", model.formatTime(model.duration))
+            if model.isVideo {
+                HStack(spacing: 18) {
+                    metric("Elapsed", model.formatTime(model.currentTime))
+                    metric("Frame", "\(model.currentFrame)")
+                    metric("Remaining", model.formatTime(model.remainingTime))
+                    metric("Duration", model.formatTime(model.duration))
 
-                Spacer()
+                    Spacer()
 
-                Text(
-                    "Range \(model.formatTime(model.rangeStart)) – "
-                        + model.formatTime(model.rangeEnd)
-                )
-                .font(.system(.caption, design: .monospaced))
-                .foregroundStyle(.secondary)
+                    Text(
+                        "Range \(model.formatTime(model.rangeStart)) – "
+                            + model.formatTime(model.rangeEnd)
+                    )
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                }
             }
         }
         .padding(.horizontal, 16)

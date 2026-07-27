@@ -21,7 +21,7 @@ struct SlimVideoPlayerApp: App {
         }
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("Open Video…") {
+                Button("Open Media…") {
                     model.isFileImporterPresented = true
                 }
                 .keyboardShortcut("o")
@@ -32,7 +32,7 @@ struct SlimVideoPlayerApp: App {
                     model.togglePlayback()
                 }
                 .keyboardShortcut(.space, modifiers: [])
-                .disabled(!model.hasVideo)
+                .disabled(!model.isVideo)
 
                 Button("Previous Frame") {
                     model.stepFrame(direction: -1)
@@ -51,15 +51,41 @@ struct SlimVideoPlayerApp: App {
                 Button("Repeat Mode: \(model.repeatMode.title)") {
                     model.cycleRepeatMode()
                 }
-                    .disabled(!model.hasVideo)
+                .disabled(!model.isVideo)
+            }
 
-                Divider()
+            CommandMenu("View") {
+                Button("Rotate") {
+                    model.rotateCounterclockwise()
+                }
+                .keyboardShortcut("r", modifiers: [])
+                .disabled(!model.hasMedia)
 
                 Button(model.isFullScreen ? "Exit Full Screen" : "Full Screen") {
                     FullScreenController.shared.toggle()
                 }
-                .keyboardShortcut("f", modifiers: [.command, .control])
-                .disabled(!model.hasVideo)
+                .keyboardShortcut("f", modifiers: [])
+                .disabled(!model.hasMedia)
+
+                Divider()
+
+                Button("Zoom In") {
+                    model.zoomImageIn()
+                }
+                .keyboardShortcut("+", modifiers: .command)
+                .disabled(!model.isImage)
+
+                Button("Zoom Out") {
+                    model.zoomImageOut()
+                }
+                .keyboardShortcut("-", modifiers: .command)
+                .disabled(!model.isImage)
+
+                Button("Actual Size / Zoom to Fit") {
+                    model.toggleImageZoomFitOrActual()
+                }
+                .keyboardShortcut(".", modifiers: [])
+                .disabled(!model.isImage)
             }
         }
     }

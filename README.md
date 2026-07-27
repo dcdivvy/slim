@@ -4,29 +4,31 @@
 
 # Slim Video Player
 
-Slim Video Player is a focused, native macOS app for inspecting MP4 video files.
-It uses SwiftUI and AVFoundation, keeps playback controls out of the video area,
-and makes it easy to review an exact range one frame at a time.
+Slim Video Player is a focused, native macOS app for inspecting media files.
+It uses SwiftUI and AVFoundation, keeps playback controls out of the media area,
+and makes it easy to review an exact video range one frame at a time.
 
 ![Slim Video Player](slim-video-player.png)
 
 ## Features
 
-### Opening videos
+### Opening media
 
-- Opens local MP4 files with the Open button or **File > Open Video…** (`⌘O`).
-- Accepts MP4 files dragged from Finder onto the app window.
+- Opens local MP4, JPG, and PNG files with the Open button or
+  **File > Open Media…** (`⌘O`).
+- Accepts media files dragged from Finder onto the app window.
 - Starts playback immediately after a video loads.
 - Resets repeat, rotation, and the playback range whenever a new file is opened.
 - Shows the open file's name in the control bar.
+- When an image is open, only rotation and full-screen controls are available.
 
 ### Playback controls
 
 - Plays and pauses with the main control or the Space bar.
-- Rotates the displayed video 90 degrees counterclockwise with each press of the
+- Rotates the displayed media 90 degrees counterclockwise with each press of the
   rotate button.
 - Enters a full-screen view with the full-screen button, `Control-Command-F`,
-  or by double-clicking the video. Full-screen mode hides the controls, menu
+  or by double-clicking the media. Full-screen mode hides the controls, menu
   bar, and Dock; `Esc` restores the standard window.
 - Moves exactly one nominal video frame backward or forward while paused.
   The Left and Right arrow keys provide keyboard access to frame stepping.
@@ -53,7 +55,7 @@ and makes it easy to review an exact range one frame at a time.
 - Displays the selected range's exact start and end times below the timeline.
 
 The range selection is non-destructive. Slim Video Player never edits or
-rewrites the original video.
+rewrites the original media.
 
 ## Requirements
 

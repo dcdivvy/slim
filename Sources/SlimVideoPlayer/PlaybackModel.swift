@@ -1,6 +1,36 @@
+import AppKit
 import AVFoundation
 import Observation
 import SwiftUI
+import UniformTypeIdentifiers
+
+enum MediaKind {
+    case video
+    case image
+}
+
+enum MediaFileSupport {
+    static let allowedContentTypes: [UTType] = [
+        .mpeg4Movie,
+        .jpeg,
+        .png,
+    ]
+
+    static func kind(for url: URL) -> MediaKind? {
+        switch url.pathExtension.lowercased() {
+        case "mp4":
+            .video
+        case "jpg", "jpeg", "png":
+            .image
+        default:
+            nil
+        }
+    }
+
+    static func isSupported(_ url: URL) -> Bool {
+        kind(for: url) != nil
+    }
+}
 
 enum RepeatMode: Int, CaseIterable {
     case off
@@ -33,10 +63,15 @@ final class PlaybackModel {
     var rangeEnd = 0.0
     var fileName: String?
     var errorMessage: String?
-    private(set) var isVideoReady = false
+    private(set) var isMediaReady = false
+    private(set) var mediaKind: MediaKind?
+    private(set) var displayedImage: NSImage?
+    private(set) var imageZoomScale: CGFloat = 1
+    private(set) var imagePanOffset: CGPoint = .zero
     private(set) var reverseFrame: ReverseFrame?
     private(set) var showsReverseFrame = false
 
+    @ObservationIgnored var imageContainerSize: CGSize = .zero
     @ObservationIgnored nonisolated(unsafe) private var timeObserver: Any?
     @ObservationIgnored nonisolated(unsafe) private var endObserver: NSObjectProtocol?
     @ObservationIgnored private var loadingTask: Task<Void, Never>?
@@ -66,20 +101,28 @@ final class PlaybackModel {
         reverseTimer?.invalidate()
     }
 
-    var hasVideo: Bool {
-        isVideoReady
+    var hasMedia: Bool {
+        isMediaReady
+    }
+
+    var isVideo: Bool {
+        hasMedia && mediaKind == .video
+    }
+
+    var isImage: Bool {
+        hasMedia && mediaKind == .image
     }
 
     var canStepFrames: Bool {
-        hasVideo && !isPlaying
+        isVideo && !isPlaying
     }
 
     var canSetRangeStart: Bool {
-        hasVideo && currentTime < rangeEnd - frameDuration
+        isVideo && currentTime < rangeEnd - frameDuration
     }
 
     var canSetRangeEnd: Bool {
-        hasVideo && currentTime > rangeStart + frameDuration
+        isVideo && currentTime > rangeStart + frameDuration
     }
 
     var currentFrame: Int {
@@ -91,78 +134,24 @@ final class PlaybackModel {
     }
 
     func open(url: URL) {
-        guard url.pathExtension.lowercased() == "mp4" else {
-            errorMessage = "Slim Video Player supports MP4 video files."
+        guard let kind = MediaFileSupport.kind(for: url) else {
+            errorMessage =
+                "Slim supports MP4 videos and JPG or PNG images."
             return
         }
 
-        loadingTask?.cancel()
-        seekGeneration &+= 1
-        stopReversePlayback(hideFrame: true)
-        player.cancelPendingPrerolls()
-        player.pause()
-        player.replaceCurrentItem(with: nil)
-        isVideoReady = false
-        isPlaying = false
-        errorMessage = nil
-        repeatMode = .off
-        playbackDirection = 1
-        rotationQuarterTurns = 0
-        currentURL = url
-        fileName = url.lastPathComponent
-        currentTime = 0
-        duration = 0
-        rangeStart = 0
-        rangeEnd = 0
+        resetForOpening(url: url)
 
-        let asset = AVURLAsset(url: url)
-        loadingTask = Task { [weak self] in
-            guard let self else { return }
-
-            do {
-                let loadedDuration = try await asset.load(.duration)
-                let tracks = try await asset.loadTracks(withMediaType: .video)
-                guard !Task.isCancelled else { return }
-
-                let seconds = loadedDuration.seconds
-                guard seconds.isFinite, seconds > 0 else {
-                    throw PlaybackError.invalidDuration
-                }
-
-                var detectedFrameRate = 30.0
-                if let track = tracks.first {
-                    let rate = try await track.load(.nominalFrameRate)
-                    if rate > 0 {
-                        detectedFrameRate = Double(rate)
-                    }
-                }
-
-                guard !Task.isCancelled else { return }
-                duration = seconds
-                currentTime = 0
-                rangeStart = 0
-                rangeEnd = seconds
-                framesPerSecond = detectedFrameRate
-
-                let item = AVPlayerItem(asset: asset)
-                player.replaceCurrentItem(with: item)
-                isVideoReady = true
-                updatePlaybackBoundaryTimes()
-                observeEnd(of: item)
-                startPlayback()
-            } catch {
-                guard !Task.isCancelled else { return }
-                player.replaceCurrentItem(with: nil)
-                isVideoReady = false
-                duration = 0
-                rangeEnd = 0
-                errorMessage = "The video could not be opened: \(error.localizedDescription)"
-            }
+        switch kind {
+        case .video:
+            openVideo(url: url)
+        case .image:
+            openImage(url: url)
         }
     }
 
     func togglePlayback() {
-        guard hasVideo else { return }
+        guard isVideo else { return }
 
         if isPlaying {
             pause()
@@ -204,6 +193,7 @@ final class PlaybackModel {
     }
 
     func cycleRepeatMode() {
+        guard isVideo else { return }
         let modes = RepeatMode.allCases
         let nextIndex = (repeatMode.rawValue + 1) % modes.count
         repeatMode = modes[nextIndex]
@@ -216,8 +206,53 @@ final class PlaybackModel {
     }
 
     func rotateCounterclockwise() {
-        guard hasVideo else { return }
+        guard hasMedia else { return }
         rotationQuarterTurns = (rotationQuarterTurns + 1) % 4
+    }
+
+    func updateImageContainerSize(_ size: CGSize) {
+        guard isImage, size.width > 0, size.height > 0 else { return }
+        if size != imageContainerSize {
+            imageContainerSize = size
+        }
+        clampImagePanOffset()
+    }
+
+    func applyImagePan(deltaInContainer delta: CGPoint) {
+        guard isImage else { return }
+        imagePanOffset.x += delta.x
+        imagePanOffset.y += delta.y
+        clampImagePanOffset()
+    }
+
+    func adjustImageZoom(by factor: CGFloat, anchorInContainer: CGPoint? = nil) {
+        guard isImage else { return }
+        let oldZoom = imageZoomScale
+        let newZoom = min(
+            max(oldZoom * factor, Self.minimumImageZoom),
+            Self.maximumImageZoom
+        )
+        guard abs(newZoom - oldZoom) > 0.000_1 else { return }
+        setImageZoom(newZoom, anchorInContainer: anchorInContainer)
+    }
+
+    func zoomImageIn() {
+        adjustImageZoom(by: Self.imageZoomStep)
+    }
+
+    func zoomImageOut() {
+        adjustImageZoom(by: 1 / Self.imageZoomStep)
+    }
+
+    func toggleImageZoomFitOrActual() {
+        guard isImage else { return }
+        if isImageZoomedToFit {
+            setImageZoom(actualSizeZoomScale)
+        } else if isImageZoomedToActualSize {
+            setImageZoom(1)
+        } else {
+            setImageZoom(actualSizeZoomScale)
+        }
     }
 
     func setRangeStartToCurrentTime() {
@@ -234,7 +269,7 @@ final class PlaybackModel {
     }
 
     func seek(to time: Double, resumeAfterSeek: Bool? = nil) {
-        guard hasVideo else { return }
+        guard isVideo else { return }
         let clampedTime = min(max(time, rangeStart), rangeEnd)
         let shouldResume = resumeAfterSeek ?? isPlaying
 
@@ -265,7 +300,7 @@ final class PlaybackModel {
     }
 
     func updateRange(start: Double, end: Double) {
-        guard hasVideo else { return }
+        guard isVideo else { return }
         let minimumGap = min(frameDuration, duration)
         rangeStart = min(max(0, start), rangeEnd - minimumGap)
         rangeEnd = max(min(duration, end), rangeStart + minimumGap)
@@ -288,6 +323,220 @@ final class PlaybackModel {
             return String(format: "%02d:%02d:%02d.%03d", hours, minutes, secs, millis)
         }
         return String(format: "%02d:%02d.%03d", minutes, secs, millis)
+    }
+
+    private func resetForOpening(url: URL) {
+        loadingTask?.cancel()
+        seekGeneration &+= 1
+        stopReversePlayback(hideFrame: true)
+        player.cancelPendingPrerolls()
+        player.pause()
+        player.replaceCurrentItem(with: nil)
+        isMediaReady = false
+        mediaKind = nil
+        displayedImage = nil
+        isPlaying = false
+        errorMessage = nil
+        repeatMode = .off
+        playbackDirection = 1
+        rotationQuarterTurns = 0
+        imageZoomScale = 1
+        imagePanOffset = .zero
+        imageContainerSize = .zero
+        currentURL = url
+        fileName = url.lastPathComponent
+        currentTime = 0
+        duration = 0
+        rangeStart = 0
+        rangeEnd = 0
+        framesPerSecond = 30
+    }
+
+    private static let minimumImageZoom: CGFloat = 0.05
+    private static let maximumImageZoom: CGFloat = 20
+    private static let imageZoomStep: CGFloat = 1.25
+    private static let imageZoomMatchTolerance: CGFloat = 0.02
+
+    private var isImageZoomedToFit: Bool {
+        abs(imageZoomScale - 1) <= Self.imageZoomMatchTolerance
+    }
+
+    private var isImageZoomedToActualSize: Bool {
+        abs(imageZoomScale - actualSizeZoomScale)
+            <= Self.imageZoomMatchTolerance
+    }
+
+    private var actualSizeZoomScale: CGFloat {
+        let fitted = fittedImageSize(in: imageContainerSize)
+        guard fitted.width > 0, let image = displayedImage else {
+            return 1
+        }
+        return min(
+            max(image.size.width / fitted.width, Self.minimumImageZoom),
+            Self.maximumImageZoom
+        )
+    }
+
+    private func setImageZoom(
+        _ newZoom: CGFloat,
+        anchorInContainer: CGPoint? = nil
+    ) {
+        let containerSize = imageContainerSize
+        let zoom = min(
+            max(newZoom, Self.minimumImageZoom),
+            Self.maximumImageZoom
+        )
+        let oldZoom = imageZoomScale
+        let anchor = anchorInContainer
+            ?? CGPoint(x: containerSize.width / 2, y: containerSize.height / 2)
+        let oldFrame = imageFrame(in: containerSize, zoom: oldZoom)
+        let contentX = (anchor.x - oldFrame.origin.x) / max(oldFrame.width, 1)
+        let contentY = (anchor.y - oldFrame.origin.y) / max(oldFrame.height, 1)
+
+        imageZoomScale = zoom
+        let fitted = fittedImageSize(in: containerSize)
+        let zoomedSize = CGSize(
+            width: fitted.width * zoom,
+            height: fitted.height * zoom
+        )
+        let newOrigin = CGPoint(
+            x: anchor.x - contentX * zoomedSize.width,
+            y: anchor.y - contentY * zoomedSize.height
+        )
+        imagePanOffset = CGPoint(
+            x: newOrigin.x - (containerSize.width - zoomedSize.width) / 2,
+            y: newOrigin.y - (containerSize.height - zoomedSize.height) / 2
+        )
+        clampImagePanOffset()
+    }
+
+    private func clampImagePanOffset() {
+        let containerSize = imageContainerSize
+        let fitted = fittedImageSize(in: containerSize)
+        let zoomedSize = CGSize(
+            width: fitted.width * imageZoomScale,
+            height: fitted.height * imageZoomScale
+        )
+
+        var clamped = imagePanOffset
+
+        if zoomedSize.width <= containerSize.width {
+            clamped.x = 0
+        } else {
+            let limit = (zoomedSize.width - containerSize.width) / 2
+            clamped.x = min(max(clamped.x, -limit), limit)
+        }
+
+        if zoomedSize.height <= containerSize.height {
+            clamped.y = 0
+        } else {
+            let limit = (zoomedSize.height - containerSize.height) / 2
+            clamped.y = min(max(clamped.y, -limit), limit)
+        }
+
+        if clamped != imagePanOffset {
+            imagePanOffset = clamped
+        }
+    }
+
+    private func fittedImageSize(in containerSize: CGSize) -> CGSize {
+        guard let image = displayedImage,
+              image.size.width > 0,
+              image.size.height > 0,
+              containerSize.width > 0,
+              containerSize.height > 0 else {
+            return .zero
+        }
+
+        let imageSize = image.size
+        let scale = min(
+            containerSize.width / imageSize.width,
+            containerSize.height / imageSize.height
+        )
+        return CGSize(
+            width: imageSize.width * scale,
+            height: imageSize.height * scale
+        )
+    }
+
+    private func imageFrame(in containerSize: CGSize, zoom: CGFloat) -> CGRect {
+        let fitted = fittedImageSize(in: containerSize)
+        let zoomedSize = CGSize(
+            width: fitted.width * zoom,
+            height: fitted.height * zoom
+        )
+        return CGRect(
+            x: (containerSize.width - zoomedSize.width) / 2 + imagePanOffset.x,
+            y: (containerSize.height - zoomedSize.height) / 2 + imagePanOffset.y,
+            width: zoomedSize.width,
+            height: zoomedSize.height
+        )
+    }
+
+    private func openVideo(url: URL) {
+        let asset = AVURLAsset(url: url)
+        loadingTask = Task { [weak self] in
+            guard let self else { return }
+
+            do {
+                let loadedDuration = try await asset.load(.duration)
+                let tracks = try await asset.loadTracks(withMediaType: .video)
+                guard !Task.isCancelled else { return }
+
+                let seconds = loadedDuration.seconds
+                guard seconds.isFinite, seconds > 0 else {
+                    throw PlaybackError.invalidDuration
+                }
+
+                var detectedFrameRate = 30.0
+                if let track = tracks.first {
+                    let rate = try await track.load(.nominalFrameRate)
+                    if rate > 0 {
+                        detectedFrameRate = Double(rate)
+                    }
+                }
+
+                guard !Task.isCancelled else { return }
+                duration = seconds
+                currentTime = 0
+                rangeStart = 0
+                rangeEnd = seconds
+                framesPerSecond = detectedFrameRate
+
+                let item = AVPlayerItem(asset: asset)
+                player.replaceCurrentItem(with: item)
+                mediaKind = .video
+                isMediaReady = true
+                updatePlaybackBoundaryTimes()
+                observeEnd(of: item)
+                startPlayback()
+            } catch {
+                guard !Task.isCancelled else { return }
+                player.replaceCurrentItem(with: nil)
+                isMediaReady = false
+                mediaKind = nil
+                duration = 0
+                rangeEnd = 0
+                errorMessage =
+                    "The media could not be opened: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func openImage(url: URL) {
+        guard let image = NSImage(contentsOf: url),
+              image.isValid,
+              image.size.width > 0,
+              image.size.height > 0 else {
+            errorMessage = "The image could not be opened."
+            currentURL = nil
+            fileName = nil
+            return
+        }
+
+        displayedImage = image
+        mediaKind = .image
+        isMediaReady = true
     }
 
     private var frameDuration: Double {
