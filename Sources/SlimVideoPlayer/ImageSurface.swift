@@ -3,6 +3,10 @@ import SwiftUI
 
 struct ImageSurface: NSViewRepresentable {
     @Bindable var model: PlaybackModel
+    let image: NSImage
+    let rotationQuarterTurns: Int
+    let imageZoomScale: CGFloat
+    let imagePanOffset: CGPoint
 
     func makeNSView(context: Context) -> MediaImageView {
         let view = MediaImageView()
@@ -12,7 +16,12 @@ struct ImageSurface: NSViewRepresentable {
 
     func updateNSView(_ nsView: MediaImageView, context: Context) {
         nsView.model = model
-        nsView.syncFromModel()
+        nsView.sync(
+            image: image,
+            rotationQuarterTurns: rotationQuarterTurns,
+            zoomScale: imageZoomScale,
+            panOffset: imagePanOffset
+        )
     }
 }
 
@@ -23,6 +32,10 @@ final class MediaImageView: NSView {
     private var lastPanPoint: CGPoint = .zero
     private var didPushClosedHandCursor = false
     private var displayedImageIdentity: ObjectIdentifier?
+    private var rotationQuarterTurns = 0
+    private var imageZoomScale: CGFloat = 1
+    private var imagePanOffset: CGPoint = .zero
+    private var displayedImage: NSImage?
 
     var model: PlaybackModel?
 
@@ -50,25 +63,36 @@ final class MediaImageView: NSView {
         }
     }
 
-    func syncFromModel() {
-        guard let model else { return }
-
-        let image = model.displayedImage
-        let identity = image.map { ObjectIdentifier($0) }
+    func sync(
+        image: NSImage,
+        rotationQuarterTurns: Int,
+        zoomScale: CGFloat,
+        panOffset: CGPoint
+    ) {
+        let identity = ObjectIdentifier(image)
         if identity != displayedImageIdentity {
             displayedImageIdentity = identity
+            displayedImage = image
             updateImageContents(image)
         }
 
+        self.rotationQuarterTurns = rotationQuarterTurns
+        imageZoomScale = zoomScale
+        imagePanOffset = panOffset
         needsLayout = true
     }
 
     override func layout() {
         super.layout()
-        guard let model else { return }
 
-        let containerSize = currentContainerSize(for: model.rotationQuarterTurns)
-        model.updateImageContainerSize(containerSize)
+        let containerSize = currentContainerSize(for: rotationQuarterTurns)
+        if let model {
+            model.updateImageContainerSize(containerSize)
+            // Container changes can clamp pan; keep the layer in sync.
+            imagePanOffset = model.imagePanOffset
+            imageZoomScale = model.imageZoomScale
+            rotationQuarterTurns = model.rotationQuarterTurns
+        }
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -77,15 +101,15 @@ final class MediaImageView: NSView {
             x: bounds.midX,
             y: bounds.midY
         )
-        let angle = CGFloat(model.rotationQuarterTurns) * .pi / 2
+        let angle = CGFloat(rotationQuarterTurns) * .pi / 2
         imageContainerLayer.setAffineTransform(
             CGAffineTransform(rotationAngle: angle)
         )
         imageLayer.frame = imageFrame(
             in: containerSize,
-            zoom: model.imageZoomScale,
-            pan: model.imagePanOffset,
-            image: model.displayedImage
+            zoom: imageZoomScale,
+            pan: imagePanOffset,
+            image: displayedImage
         )
         CATransaction.commit()
     }
@@ -124,6 +148,7 @@ final class MediaImageView: NSView {
                 rotationQuarterTurns: model.rotationQuarterTurns
             )
         )
+        pullTransformFromModel()
     }
 
     override func mouseUp(with event: NSEvent) {
@@ -140,6 +165,7 @@ final class MediaImageView: NSView {
             by: 1 + event.magnification,
             anchorInContainer: anchor
         )
+        pullTransformFromModel()
     }
 
     override func scrollWheel(with event: NSEvent) {
@@ -156,6 +182,7 @@ final class MediaImageView: NSView {
             )
             let zoomFactor = exp(-event.scrollingDeltaY * 0.01)
             model.adjustImageZoom(by: zoomFactor, anchorInContainer: anchor)
+            pullTransformFromModel()
             return
         }
 
@@ -168,6 +195,7 @@ final class MediaImageView: NSView {
                 rotationQuarterTurns: model.rotationQuarterTurns
             )
         )
+        pullTransformFromModel()
     }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
@@ -181,6 +209,14 @@ final class MediaImageView: NSView {
             return true
         }
         return super.performKeyEquivalent(with: event)
+    }
+
+    private func pullTransformFromModel() {
+        guard let model else { return }
+        rotationQuarterTurns = model.rotationQuarterTurns
+        imageZoomScale = model.imageZoomScale
+        imagePanOffset = model.imagePanOffset
+        needsLayout = true
     }
 
     private func currentContainerSize(for rotationQuarterTurns: Int) -> CGSize {

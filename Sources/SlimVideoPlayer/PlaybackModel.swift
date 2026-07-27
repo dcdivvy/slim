@@ -63,6 +63,7 @@ final class PlaybackModel {
     var rangeEnd = 0.0
     var fileName: String?
     var errorMessage: String?
+    private(set) var openedFileID: String?
     private(set) var isMediaReady = false
     private(set) var mediaKind: MediaKind?
     private(set) var displayedImage: NSImage?
@@ -344,6 +345,7 @@ final class PlaybackModel {
         imagePanOffset = .zero
         imageContainerSize = .zero
         currentURL = url
+        openedFileID = url.absoluteString
         fileName = url.lastPathComponent
         currentTime = 0
         duration = 0
@@ -530,6 +532,7 @@ final class PlaybackModel {
               image.size.height > 0 else {
             errorMessage = "The image could not be opened."
             currentURL = nil
+            openedFileID = nil
             fileName = nil
             return
         }

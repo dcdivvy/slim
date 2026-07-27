@@ -80,8 +80,16 @@ struct ContentView: View {
                     showsReverseFrame: model.showsReverseFrame,
                     rotationQuarterTurns: model.rotationQuarterTurns
                 )
-            } else if model.isImage, model.displayedImage != nil {
-                ImageSurface(model: model)
+                .id(model.openedFileID)
+            } else if model.isImage, let image = model.displayedImage {
+                ImageSurface(
+                    model: model,
+                    image: image,
+                    rotationQuarterTurns: model.rotationQuarterTurns,
+                    imageZoomScale: model.imageZoomScale,
+                    imagePanOffset: model.imagePanOffset
+                )
+                .id(model.openedFileID)
             } else {
                 VStack(spacing: 14) {
                     Image(systemName: "photo.on.rectangle")
