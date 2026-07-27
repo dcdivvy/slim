@@ -180,7 +180,7 @@ final class MediaImageView: NSView {
                 viewPoint,
                 rotationQuarterTurns: model.rotationQuarterTurns
             )
-            let zoomFactor = exp(-event.scrollingDeltaY * 0.01)
+            let zoomFactor = exp(event.scrollingDeltaY * 0.01)
             model.adjustImageZoom(by: zoomFactor, anchorInContainer: anchor)
             pullTransformFromModel()
             return
